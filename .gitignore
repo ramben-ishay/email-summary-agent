@@ -1,0 +1,7 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
