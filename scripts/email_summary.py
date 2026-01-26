@@ -537,9 +537,14 @@ def markdown_to_html(markdown_text: str) -> str:
             current_items = []
             continue
             
-        # Article item
+        # Article item (with or without leading dash)
         if line.startswith('- '):
             current_items.append(line[2:])
+            continue
+        
+        # Article item without dash (starts with [Source])
+        if line.startswith('[') and current_section:
+            current_items.append(line)
             continue
             
         # Horizontal rule (section break)
