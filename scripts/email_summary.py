@@ -506,44 +506,65 @@ def markdown_to_html(markdown_text: str) -> str:
     sections = []
     current_section = None
     current_items = []
+    current_item_lines = []
+    
+    def flush_current_item():
+        """Flush accumulated item lines into current_items."""
+        nonlocal current_item_lines
+        if current_item_lines:
+            full_item = ' '.join(current_item_lines)
+            current_items.append(full_item)
+            current_item_lines = []
     
     for line in lines:
-        line = line.strip()
+        stripped = line.strip()
         
-        # Skip empty lines
-        if not line:
+        # Skip empty lines (but flush current item first)
+        if not stripped:
+            flush_current_item()
             continue
             
         # Main title
-        if line.startswith('# '):
-            title = line[2:]
+        if stripped.startswith('# '):
+            flush_current_item()
+            title = stripped[2:]
             continue
             
         # Date line
-        if line.startswith('**Date:**') or re.match(r'^[A-Z][a-z]+ \d+, \d{4}$', line):
-            date_str = line.replace('**Date:**', '').strip()
+        if stripped.startswith('**Date:**') or re.match(r'^[A-Z][a-z]+ \d+, \d{4}$', stripped):
+            flush_current_item()
+            date_str = stripped.replace('**Date:**', '').strip()
             continue
             
         # Intro paragraph
-        if line.startswith("Here's your"):
-            intro = line
+        if stripped.startswith("Here's your"):
+            flush_current_item()
+            intro = stripped
             continue
             
         # Section header
-        if line.startswith('## '):
+        if stripped.startswith('## '):
+            flush_current_item()
             if current_section and current_items:
                 sections.append((current_section, current_items))
-            current_section = line[3:]
+            current_section = stripped[3:]
             current_items = []
             continue
             
-        # Article item
-        if line.startswith('- '):
-            current_items.append(line[2:])
+        # Article item (support both - and * bullets)
+        if stripped.startswith('- ') or stripped.startswith('* '):
+            flush_current_item()
+            current_item_lines = [stripped[2:]]
+            continue
+        
+        # Continuation of previous item (indented or follows a bullet)
+        if current_item_lines and stripped:
+            current_item_lines.append(stripped)
             continue
             
         # Horizontal rule (section break)
-        if line == '---':
+        if stripped == '---' or stripped == '***' or stripped == '___':
+            flush_current_item()
             if current_section and current_items:
                 sections.append((current_section, current_items))
             current_section = None
@@ -551,10 +572,12 @@ def markdown_to_html(markdown_text: str) -> str:
             continue
             
         # Footer
-        if line.startswith('*Automated'):
+        if stripped.startswith('*Automated') or stripped.startswith('_Automated'):
+            flush_current_item()
             continue
     
-    # Don't forget the last section
+    # Don't forget to flush any remaining item and section
+    flush_current_item()
     if current_section and current_items:
         sections.append((current_section, current_items))
     
@@ -591,14 +614,60 @@ def markdown_to_html(markdown_text: str) -> str:
                         </td>
                     </tr>'''
             else:
-                # Article format
-                match = re.match(r'\[([^\]]+)\]\s*\*\*(.+?)\*\*\s*[-–]\s*(.+?)\s*\[Read more\]\(([^)]+)\)', item)
+                # Article format - try multiple patterns
+                source = None
+                article_title = None
+                summary = None
+                link = None
+                
+                # Pattern 1: [Source] **Title** - Summary. [Read more](link)
+                match = re.match(r'\[([^\]]+)\]\s*\*\*(.+?)\*\*\s*[-–:]\s*(.+?)\s*\[(?:Read more|Read More|Link|Read)\]\(([^)]+)\)', item)
                 if match:
-                    source = match.group(1)
-                    article_title = match.group(2)
-                    summary = match.group(3)
-                    link = match.group(4)
-                    
+                    source, article_title, summary, link = match.groups()
+                
+                # Pattern 2: [Source] **Title** - Summary. (link at end without brackets)
+                if not match:
+                    match = re.match(r'\[([^\]]+)\]\s*\*\*(.+?)\*\*\s*[-–:]\s*(.+?)\s*(https?://[^\s]+)', item)
+                    if match:
+                        source, article_title, summary, link = match.groups()
+                
+                # Pattern 3: [Source] **Title**: Summary [link](url)
+                if not match:
+                    match = re.match(r'\[([^\]]+)\]\s*\*\*(.+?)\*\*:?\s*(.+?)\s*\[.+?\]\(([^)]+)\)', item)
+                    if match:
+                        source, article_title, summary, link = match.groups()
+                
+                # Pattern 4: **Title** - Summary. [Read more](link) (no source)
+                if not match:
+                    match = re.match(r'\*\*(.+?)\*\*\s*[-–:]\s*(.+?)\s*\[(?:Read more|Read More|Link|Read)\]\(([^)]+)\)', item)
+                    if match:
+                        article_title, summary, link = match.groups()
+                        source = "Newsletter"
+                
+                # Pattern 5: Just extract any link and use rest as content
+                if not match:
+                    link_match = re.search(r'\[([^\]]*)\]\(([^)]+)\)', item)
+                    if link_match:
+                        link = link_match.group(2)
+                        # Remove the link part and try to parse rest
+                        rest = re.sub(r'\[([^\]]*)\]\(([^)]+)\)', '', item).strip()
+                        # Try to get source from [Source]
+                        source_match = re.match(r'\[([^\]]+)\]\s*(.+)', rest)
+                        if source_match:
+                            source = source_match.group(1)
+                            rest = source_match.group(2)
+                        else:
+                            source = "Newsletter"
+                        # Try to split title and summary
+                        title_match = re.match(r'\*\*(.+?)\*\*\s*[-–:]?\s*(.*)', rest)
+                        if title_match:
+                            article_title = title_match.group(1)
+                            summary = title_match.group(2) if title_match.group(2) else ""
+                        else:
+                            article_title = rest[:100] if len(rest) > 100 else rest
+                            summary = ""
+                
+                if source and article_title and link:
                     # Check if Hebrew content
                     has_hebrew = bool(re.search(r'[\u0590-\u05FF]', article_title))
                     text_dir = 'rtl' if has_hebrew else 'ltr'
