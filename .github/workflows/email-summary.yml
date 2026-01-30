@@ -1,5 +1,8 @@
 name: Email Summary Agent
 
+# Note: Scheduled workflows require recent repo activity to stay active.
+# Re-enabled: 2026-01-30
+
 on:
   # Run 3 times daily (Israel Time = UTC+2)
   # 08:00 IST = 06:00 UTC
