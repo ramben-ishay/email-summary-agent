@@ -15,6 +15,11 @@ on:
   
   # Allow manual trigger for testing
   workflow_dispatch:
+  
+  # External trigger (backup for scheduled runs)
+  # Can be triggered via: POST /repos/{owner}/{repo}/dispatches
+  repository_dispatch:
+    types: [run_email_summary]
 
 jobs:
   summarize-emails:
