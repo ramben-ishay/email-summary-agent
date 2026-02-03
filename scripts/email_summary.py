@@ -568,7 +568,7 @@ def markdown_to_html(markdown_text: str) -> str:
     for section_name, items in sections:
         if "System Notifications" not in section_name:
             color = get_category_color(section_name)
-            toc_html += f'''<a href="#section-{section_name.replace(' ', '-').lower()}" style="display: inline-block; margin: 4px; padding: 6px 12px; background: {color}15; color: {color}; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 500;">{section_name} ({len(items)})</a>'''
+            toc_html += f'''<a href="#section-{section_name.replace(' ', '-').lower()}" style="display: inline-block; margin: 4px; padding: 6px 12px; background: {color}15 !important; color: {color} !important; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 500;">{section_name} ({len(items)})</a>'''
     
     # Build sections HTML
     sections_html = ""
@@ -591,8 +591,8 @@ def markdown_to_html(markdown_text: str) -> str:
                     items_html += f'''
                     <tr>
                         <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                            <span style="display: inline-block; background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">{source}</span>
-                            <span style="color: #6b7280; font-size: 14px;">{description}</span>
+                            <span style="display: inline-block; background-color: #f3f4f6 !important; color: #6b7280 !important; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">{source}</span>
+                            <span style="color: #6b7280 !important; font-size: 14px;">{description}</span>
                         </td>
                     </tr>'''
             else:
@@ -615,22 +615,22 @@ def markdown_to_html(markdown_text: str) -> str:
                             <table cellpadding="0" cellspacing="0" border="0" width="100%">
                                 <tr>
                                     <td>
-                                        <span style="display: inline-block; background: {color}20; color: {color}; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px;">{source}</span>
+                                        <span style="display: inline-block; background: {color}20 !important; color: {color} !important; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px;">{source}</span>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding-top: 8px;" dir="{text_dir}">
-                                        <a href="{link}" style="color: #1f2937; text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.4; text-align: {text_align};">{article_title}</a>
+                                        <a href="{link}" style="color: #1f2937 !important; text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.4; text-align: {text_align};">{article_title}</a>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding-top: 6px;">
-                                        <span style="color: #6b7280; font-size: 14px; line-height: 1.5;">{summary}</span>
+                                        <span style="color: #6b7280 !important; font-size: 14px; line-height: 1.5;">{summary}</span>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding-top: 10px;">
-                                        <a href="{link}" style="display: inline-block; background: {color}; color: white; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500;">Read Article →</a>
+                                        <a href="{link}" style="display: inline-block; background: {color} !important; color: #ffffff !important; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500;">Read Article →</a>
                                     </td>
                                 </tr>
                             </table>
@@ -640,7 +640,7 @@ def markdown_to_html(markdown_text: str) -> str:
                     # Fallback for unparseable items
                     items_html += f'''
                     <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #4b5563; font-size: 14px;">
+                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #4b5563 !important; font-size: 14px;">
                             {item}
                         </td>
                     </tr>'''
@@ -654,10 +654,10 @@ def markdown_to_html(markdown_text: str) -> str:
                 <td style="padding-bottom: 16px;">
                     <table cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                            <td style="background: {color}; width: 4px; border-radius: 2px;"></td>
+                            <td style="background: {color} !important; width: 4px; border-radius: 2px;"></td>
                             <td style="padding-left: 12px;">
-                                <span style="font-size: 18px; font-weight: 700; color: #1f2937;">{section_icon} {section_name}</span>
-                                <span style="margin-left: 8px; background: {color}20; color: {color}; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600;">{len(items)}</span>
+                                <span style="font-size: 18px; font-weight: 700; color: #1f2937 !important;">{section_icon} {section_name}</span>
+                                <span style="margin-left: 8px; background: {color}20 !important; color: {color} !important; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600;">{len(items)}</span>
                             </td>
                         </tr>
                     </table>
@@ -665,7 +665,7 @@ def markdown_to_html(markdown_text: str) -> str:
             </tr>
             <tr>
                 <td>
-                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #ffffff !important; border-radius: 12px; border: 1px solid #e5e7eb;">
                         <tr>
                             <td style="padding: 8px 20px;">
                                 <table cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -684,33 +684,46 @@ def markdown_to_html(markdown_text: str) -> str:
     # Build full HTML
     html = f'''
     <!DOCTYPE html>
-    <html>
+    <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="x-apple-disable-message-reformatting">
+        <meta name="color-scheme" content="light only">
+        <meta name="supported-color-schemes" content="light">
+        <title>{title}</title>
+        <style>
+            :root {{
+                color-scheme: light;
+                supported-color-schemes: light;
+            }}
+            body, table, td {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            }}
+        </style>
     </head>
-    <body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9fafb;">
+    <body style="margin: 0; padding: 0; background-color: #f9fafb !important; color: #1f2937 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; word-spacing: normal;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9fafb !important;">
             <tr>
                 <td align="center" style="padding: 20px;">
-                    <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px;">
+                    <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff !important;">
                         
                         <!-- Header -->
                         <tr>
                             <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 16px 16px 0 0; padding: 32px 24px; text-align: center;">
-                                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">📬 {title}</h1>
-                                <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 15px;">{date_str}</p>
+                                <h1 style="margin: 0; color: #ffffff !important; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">📬 {title}</h1>
+                                <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9) !important; font-size: 15px;">{date_str}</p>
                             </td>
                         </tr>
                         
                         <!-- Stats Bar -->
                         <tr>
-                            <td style="background: white; padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+                            <td style="background-color: #ffffff !important; padding: 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
                                 <table cellpadding="0" cellspacing="0" border="0" width="100%">
                                     <tr>
                                         <td align="center">
-                                            <span style="display: inline-block; background: #f3f4f6; padding: 8px 16px; border-radius: 20px; font-size: 14px; color: #4b5563;">
-                                                <strong style="color: #6366f1;">{total_articles}</strong> articles from <strong style="color: #6366f1;">{len(sections) - 1}</strong> categories
+                                            <span style="display: inline-block; background: #f3f4f6 !important; padding: 8px 16px; border-radius: 20px; font-size: 14px; color: #4b5563 !important;">
+                                                <strong style="color: #6366f1 !important;">{total_articles}</strong> articles from <strong style="color: #6366f1 !important;">{len(sections) - 1}</strong> categories
                                             </span>
                                         </td>
                                     </tr>
@@ -720,11 +733,11 @@ def markdown_to_html(markdown_text: str) -> str:
                         
                         <!-- Table of Contents -->
                         <tr>
-                            <td style="background: white; padding: 0 24px 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+                            <td style="background-color: #ffffff !important; padding: 0 24px 20px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
                                 <table cellpadding="0" cellspacing="0" border="0" width="100%">
                                     <tr>
-                                        <td style="text-align: center; padding: 16px; background: #f9fafb; border-radius: 12px;">
-                                            <p style="margin: 0 0 12px 0; font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Jump to Section</p>
+                                        <td style="text-align: center; padding: 16px; background: #f9fafb !important; border-radius: 12px;">
+                                            <p style="margin: 0 0 12px 0; font-size: 12px; color: #9ca3af !important; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Jump to Section</p>
                                             {toc_html}
                                         </td>
                                     </tr>
@@ -734,18 +747,18 @@ def markdown_to_html(markdown_text: str) -> str:
                         
                         <!-- Main Content -->
                         <tr>
-                            <td style="background: #f9fafb; padding: 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+                            <td style="background-color: #f9fafb !important; padding: 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
                                 {sections_html}
                             </td>
                         </tr>
                         
                         <!-- Footer -->
                         <tr>
-                            <td style="background: #1f2937; border-radius: 0 0 16px 16px; padding: 24px; text-align: center;">
-                                <p style="margin: 0; color: #9ca3af; font-size: 13px;">
-                                    Automated by <strong style="color: white;">Email Summary Agent</strong>
+                            <td style="background-color: #1f2937 !important; border-radius: 0 0 16px 16px; padding: 24px; text-align: center;">
+                                <p style="margin: 0; color: #9ca3af !important; font-size: 13px;">
+                                    Automated by <strong style="color: #ffffff !important;">Email Summary Agent</strong>
                                 </p>
-                                <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 12px;">
+                                <p style="margin: 8px 0 0 0; color: #6b7280 !important; font-size: 12px;">
                                     Powered by GPT | Built with Python
                                 </p>
                             </td>
