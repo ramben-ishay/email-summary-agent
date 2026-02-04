@@ -68,33 +68,81 @@ For articles behind paywalls (common in Substack):
 ## Summary Format
 
 ### Structure
-- Articles grouped by dynamically detected topics (AI determines categories based on content)
+- Articles grouped by thematic categories (see below)
+- Duplicate stories from multiple sources are deduplicated
+- Irrelevant content is filtered to a separate section
 - Each article includes:
   - Source name in brackets (e.g., [Lenny's Newsletter], [TechCrunch], [TheMarker])
   - Article title in bold
   - 1 to 2 line summary
   - Original link to the article
 
+### Thematic Categories
+
+Articles are grouped into these specific categories:
+
+| Category | What Belongs Here |
+|----------|------------------|
+| **AI Products and Tools** | New AI products, tools, APIs, coding assistants (Codex, Clawdbot), voice agents, AI notetakers |
+| **AI Strategy and Industry** | Enterprise AI deals, AI regulation, AI's impact on industries, M&A driven by AI |
+| **Startup and Venture News** | Funding rounds, accelerators, unicorns, company acquisitions, VC insights |
+| **Product Craft** | PM frameworks, roadmaps, discovery habits, measuring impact, PM job hunting |
+| **UX Patterns and Accessibility** | Micro interactions, loading states, onboarding teardowns, designing for ADHD/autism/older adults |
+| **Developer Tools and Engineering** | SDKs, coding tools, CSS techniques, security incidents, programming language trends |
+| **Marketing and Growth Tactics** | Viral loops, launch strategies, growth hacking, copywriting |
+| **Leadership and Careers** | Burnout, meritocracy, company culture, career advice, job hunting |
+| **Israeli Startups and Tech** | Israeli VC ecosystem, Israeli startups, tech company news ONLY (not general Israeli news) |
+| **Crypto and Fintech** | Cryptocurrency, stablecoin regulation, fintech products |
+
+### Deduplication Rules
+
+- When the same story appears from multiple sources, keep only one entry with the best summary
+- When multiple articles discuss the same product/topic, combine them into one entry
+- Prefer sources with more substantive summaries
+
+### Filtered Out Section
+
+Content that is NOT relevant to tech/product professionals goes in a "Filtered Out" section:
+
+- General politics/geopolitics unrelated to tech
+- Real estate prices and property sales
+- Legal cases unrelated to tech
+- Social/cultural stories with no tech angle
+- Labor policy unless directly affecting tech workers
+- Government policy unrelated to tech
+- Wealth profiles of non tech individuals
+- Promotional content with no substance
+
 ### Example Output
 
 ```
-## AI and Machine Learning
+## AI Products and Tools
 
-- [TechCrunch] **Understanding Transformers in 2026** - A deep dive into how transformer architecture has evolved with new attention mechanisms and efficiency improvements. [Read more](https://example.com/article1)
+- [TechCrunch] **OpenAI launches new macOS app for agentic coding** - OpenAI introduces Codex for macOS, enabling advanced AI driven coding workflows. [Read more](https://example.com/article1)
 
-- [a16z] **Building RAG Applications** - Practical guide to retrieval augmented generation covering vector databases and chunking strategies. [Read more](https://example.com/article2)
+- [LangTalks] **Clawdbot: העוזר האישי שרץ על המחשב שלך** - Clawdbot (OpenClaw) is an open source AI assistant running locally with direct file access. [Read more](https://example.com/article2)
 
-- [אופטיקאי מדופלם] **רדיולוגים ובינה מלאכותית** - Analysis of how AI is transforming radiology, examining whether radiologists will become obsolete or find new roles alongside AI tools. [Read more](https://example.com/hebrew-article)
+## AI Strategy and Industry
 
-## Productivity
+- [Platformer] **SpaceX acquires xAI for $250B** - Consolidates Musk's companies and plans space based AI data centers. [Read more](https://example.com/article3)
 
-- [The New York Times] **The 4 Hour Deep Work Block** - Research backed approach to structuring focused work sessions for maximum output. [Read more](https://example.com/article3)
+## Startup and Venture News
 
-## Startups and Business
+- [a16z] **2026: the biggest year of M&A in history?** - Ben Horowitz and David Solomon discuss why 2026 could break records for mergers and acquisitions. [Read more](https://example.com/article4)
 
-- [Lenny's Newsletter] **Why your product stopped growing** - WP Engine founder Jason Cohen discusses diagnosing stalled growth, why "too expensive" is never the real churn reason, and the positioning shift that can 8x revenue. [Read more](https://example.com/article4)
+## Product Craft
 
-- [TheMarker] **רכישות הענק הסתירו את המגמה האמיתית** - Major tech acquisitions have been masking the real trends in Israeli high tech industry performance. [Read more](https://example.com/article5)
+- [Lenny's Newsletter] **How to build AI product sense** - Interactive guide for developing intuition and skills for impactful AI products. [Read more](https://example.com/article5)
+
+## Israeli Startups and Tech
+
+- [Startup for Startup] **Ecosystem Conference** - Israeli investors discuss startup challenges in the AI era and strategies for growth. [Read more](https://example.com/article6)
+
+## Filtered Out
+
+- [TheMarker] **וילה ב 12.2 מיליון שקל** - Real estate, not tech
+- [TheMarker] **עזבו חרדים, הממשלה הזאת עוד תתפרק בגלל הרפורמה בחלב** - Government policy, not tech
+- [TheMarker] **סין בונה נושאות מטוסים** - Geopolitics, not tech
 
 ---
 

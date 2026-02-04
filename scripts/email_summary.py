@@ -361,40 +361,74 @@ def group_articles_by_topic(all_articles: list[dict], system_notifications: list
 **SYSTEM NOTIFICATIONS:**
 {notifications_text}
 
+**THEMATIC CATEGORIES (use these exact names):**
+
+Use ONLY these categories. Place each article in the single most appropriate category:
+
+1. **AI Products and Tools** - New AI products, tools, APIs, coding assistants (Codex, Clawdbot), voice agents, AI notetakers, AI journals
+2. **AI Strategy and Industry** - Enterprise AI deals, AI regulation, AI's impact on industries, M&A driven by AI, AI market analysis
+3. **Startup and Venture News** - Funding rounds, accelerators, unicorns, company acquisitions, VC insights, startup advice
+4. **Product Craft** - Product management frameworks, roadmaps, discovery habits, measuring impact, PM job hunting, product strategy
+5. **UX Patterns and Accessibility** - Micro interactions, loading states, onboarding teardowns, designing for ADHD/autism/older adults, accessibility guides
+6. **Developer Tools and Engineering** - SDKs, coding tools, CSS techniques, security incidents, programming language trends
+7. **Marketing and Growth Tactics** - Viral loops, launch strategies, Super Bowl stunts, growth hacking, copywriting
+8. **Leadership and Careers** - Burnout, meritocracy, company culture, career advice, job hunting, personal development
+9. **Israeli Startups and Tech** - Israeli VC ecosystem, Israeli startups, Startup for Startup content, Israeli tech company news ONLY
+10. **Crypto and Fintech** - Cryptocurrency, stablecoin regulation, fintech products, payment platforms
+
+**DEDUPLICATION RULES (CRITICAL):**
+
+- If the SAME story appears from multiple sources (e.g., SpaceX/xAI acquisition covered by TechCrunch, Platformer, and NYT), keep ONLY ONE entry with the best summary
+- If multiple articles discuss the same product/topic (e.g., 5 articles about Moltbook), combine them into ONE entry that captures the key points
+- Prefer sources with more substantive summaries
+
+**FILTERED OUT SECTION:**
+
+Create a "## Filtered Out" section at the end (before System Notifications) for content that is NOT relevant to tech/product professionals. Include:
+
+- General politics/geopolitics unrelated to tech (e.g., "China building aircraft carriers")
+- Real estate prices and property sales (e.g., "Villa sold for 12.2M shekels")
+- Legal cases unrelated to tech (e.g., "Insurance fraud compensation")
+- Social/cultural stories with no tech angle (e.g., "Children separated from parents", "Education system failing")
+- Labor policy unless directly affecting tech workers (e.g., "60K shekels/hour professionals", "Unlimited sick days job")
+- Government policy unrelated to tech (e.g., "Dairy reform", "Tax authority methods")
+- Wealth profiles of non tech individuals
+- Promotional content with no substance
+
+For filtered items, use a compact format:
+- [Source] **Title** - Brief reason why filtered (e.g., "Real estate, not tech")
+
 **FORMATTING REQUIREMENTS:**
 
 1. Start with a title: "# Daily Newsletter Digest" and the date: {today}
 
 2. Add a brief intro line like "Here's your daily summary of [X] articles from [Y] sources."
 
-3. Group articles by topic with ## headers. Topic examples:
-   - AI and Machine Learning
-   - Startups and Business
-   - Product Management
-   - Software Engineering
-   - Tech Industry News
-   - Israeli Tech (for Hebrew sources)
-   
+3. Group articles by topic with ## headers using the EXACT category names above
+
 4. **CRITICAL FORMAT for each article:**
    - [Source] **Title** - Summary in English. [Read more](link)
    - Example: [Lenny's Newsletter] **Why your product stopped growing** - WP Engine founder discusses diagnosing stalled growth. [Read more](https://...)
    - For Hebrew titles, keep the Hebrew title: [TheMarker] **רכישות הענק** - English summary here. [Read more](link)
 
-5. After all article sections, add a horizontal rule (---) and then:
+5. Add "## Filtered Out" section with items that don't fit tech/product focus
+
+6. After filtered section, add a horizontal rule (---) and then:
 
 ## System Notifications
 
 - [Source] Brief description of notification
-- [Source] Brief description of notification
 
-6. End with a footer: "*Automated by Email Summary Agent*"
+7. End with a footer: "*Automated by Email Summary Agent*"
 
 **IMPORTANT:**
 - Every article MUST have the source in brackets at the start
 - Summaries must be in English (translate Hebrew if needed)
 - Hebrew titles can remain in Hebrew
 - Keep summaries to 1-2 lines maximum
-- Make the email scannable and well-organized
+- Make the email scannable and well organized
+- DEDUPLICATE aggressively - same story from multiple sources = ONE entry
+- Israeli Startups and Tech should ONLY contain tech/startup content, NOT general Israeli news
 """
 
     try:
@@ -479,13 +513,17 @@ def markdown_to_html(markdown_text: str) -> str:
     
     # Category colors for visual distinction
     category_colors = {
-        "AI and Machine Learning": "#8B5CF6",
-        "Startups and Business": "#10B981",
-        "Product Management": "#F59E0B",
-        "Software Engineering": "#3B82F6",
-        "Tech Industry News": "#EC4899",
-        "Israeli Tech": "#06B6D4",
-        "Cybersecurity": "#EF4444",
+        "AI Products and Tools": "#8B5CF6",
+        "AI Strategy and Industry": "#7C3AED",
+        "Startup and Venture News": "#10B981",
+        "Product Craft": "#F59E0B",
+        "UX Patterns and Accessibility": "#EC4899",
+        "Developer Tools and Engineering": "#3B82F6",
+        "Marketing and Growth Tactics": "#F97316",
+        "Leadership and Careers": "#14B8A6",
+        "Israeli Startups and Tech": "#06B6D4",
+        "Crypto and Fintech": "#EAB308",
+        "Filtered Out": "#9CA3AF",
         "System Notifications": "#6B7280",
     }
     
