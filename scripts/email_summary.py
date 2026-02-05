@@ -18,8 +18,11 @@ from datetime import datetime, timedelta, timezone
 import os
 import json
 import re
+import hashlib
 from typing import Optional
 from pathlib import Path
+
+import requests
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -36,6 +39,10 @@ GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 RECIPIENT_EMAIL = os.environ.get("RECIPIENT_EMAIL")
+
+# Gist configuration for article deduplication
+GIST_ID = os.environ.get("SENT_ARTICLES_GIST_ID")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
 # Gmail IMAP/SMTP settings
 IMAP_SERVER = "imap.gmail.com"
@@ -813,6 +820,79 @@ def markdown_to_html(markdown_text: str) -> str:
     return html
 
 
+def generate_article_id(article: dict) -> str:
+    """Generate a unique ID for an article based on title and link."""
+    content = f"{article.get('title', '')}{article.get('link', '')}".lower().strip()
+    return hashlib.md5(content.encode()).hexdigest()
+
+
+def load_last_email_articles() -> set:
+    """Load article IDs from the last sent email via GitHub Gist."""
+    if not GIST_ID or not GITHUB_TOKEN:
+        print("Gist not configured, skipping deduplication")
+        return set()
+
+    try:
+        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+        response = requests.get(
+            f"https://api.github.com/gists/{GIST_ID}",
+            headers=headers
+        )
+        if response.status_code == 200:
+            content = response.json()["files"]["last_email_articles.json"]["content"]
+            data = json.loads(content)
+            print(f"Loaded {len(data.get('article_ids', []))} article IDs from last email")
+            return set(data.get("article_ids", []))
+        else:
+            print(f"Failed to load from Gist: {response.status_code}")
+    except Exception as e:
+        print(f"Error loading last email articles: {e}")
+
+    return set()
+
+
+def save_last_email_articles(articles: list[dict]):
+    """Save current email's article IDs to GitHub Gist (overwrites previous)."""
+    if not GIST_ID or not GITHUB_TOKEN:
+        print("Gist not configured, skipping save")
+        return
+
+    try:
+        article_ids = [generate_article_id(a) for a in articles]
+        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+        payload = {
+            "files": {
+                "last_email_articles.json": {
+                    "content": json.dumps({"article_ids": article_ids}, indent=2)
+                }
+            }
+        }
+        response = requests.patch(
+            f"https://api.github.com/gists/{GIST_ID}",
+            headers=headers,
+            json=payload
+        )
+        if response.status_code == 200:
+            print(f"Saved {len(article_ids)} article IDs to Gist")
+        else:
+            print(f"Failed to save to Gist: {response.status_code}")
+    except Exception as e:
+        print(f"Error saving last email articles: {e}")
+
+
+def filter_already_sent(articles: list[dict], last_article_ids: set) -> list[dict]:
+    """Remove articles that were in the last email."""
+    new_articles = []
+    duplicates = 0
+    for article in articles:
+        if generate_article_id(article) not in last_article_ids:
+            new_articles.append(article)
+        else:
+            duplicates += 1
+            print(f"  Skipping duplicate: {article.get('title', 'Unknown')[:50]}...")
+    return new_articles
+
+
 def main(email_limit: Optional[int] = None):
     """Main entry point for the email summary agent.
     
@@ -836,20 +916,24 @@ def main(email_limit: Optional[int] = None):
         if not RECIPIENT_EMAIL:
             missing.append("RECIPIENT_EMAIL")
         raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
-    
+
+    # Load last email's article IDs for deduplication
+    print("\n[Step 0] Loading previous email articles for deduplication...")
+    last_article_ids = load_last_email_articles()
+
     # Step 1: Fetch emails from the last 24 hours
     print("\n[Step 1] Fetching emails from the last 24 hours...")
     emails = fetch_emails_from_last_n_hours(hours=24, limit=email_limit)
     print(f"Total emails fetched: {len(emails)}")
-    
+
     # Step 2: Extract articles from each email (Stage 1)
     print("\n[Step 2] Extracting articles from emails...")
     all_articles = []
     system_notifications = []
-    
+
     for email_data in emails:
         result = extract_articles_from_email(email_data)
-        
+
         if result["type"] == "system_notification":
             system_notifications.append({
                 "source": result["source"],
@@ -857,24 +941,35 @@ def main(email_limit: Optional[int] = None):
             })
         else:
             all_articles.extend(result.get("articles", []))
-    
+
     print(f"\nTotal articles extracted: {len(all_articles)}")
     print(f"Total system notifications: {len(system_notifications)}")
-    
+
+    # Step 2.5: Filter out articles that were in the last email
+    print("\n[Step 2.5] Filtering duplicate articles...")
+    original_count = len(all_articles)
+    all_articles = filter_already_sent(all_articles, last_article_ids)
+    print(f"Filtered {original_count - len(all_articles)} duplicate articles")
+    print(f"New articles to include: {len(all_articles)}")
+
     # Step 3: Group articles and create summary (Stage 2)
     print("\n[Step 3] Creating summary...")
     if all_articles or system_notifications:
         summary = group_articles_by_topic(all_articles, system_notifications)
     else:
         summary = create_no_articles_message()
-    
+
     if not summary:
         summary = create_no_articles_message()
-    
+
     # Step 4: Send the summary email
     print("\n[Step 4] Sending summary email...")
     send_summary_email(summary)
-    
+
+    # Step 5: Save current articles to Gist (only after successful send)
+    print("\n[Step 5] Saving article IDs for next run...")
+    save_last_email_articles(all_articles)
+
     print("\n" + "=" * 60)
     print("Email Summary Agent Completed Successfully")
     print("=" * 60)
