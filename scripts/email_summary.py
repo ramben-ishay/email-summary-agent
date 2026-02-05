@@ -54,6 +54,24 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 MODEL = "gpt-4.1"  # Update to "gpt-5.2" when available; spec targets GPT 5.2
 
 
+def get_time_of_day_label() -> str:
+    """Get time of day label based on Israel Time (UTC+2).
+    
+    Schedule mapping:
+    - 06:00 UTC (08:00 IST) -> Morning Digest
+    - 14:00 UTC (16:00 IST) -> Afternoon Digest  
+    - 22:00 UTC (00:00 IST) -> Night Digest
+    """
+    hour_utc = datetime.now(timezone.utc).hour
+    
+    if 4 <= hour_utc < 12:      # 06:00 to 13:59 UTC (08:00 to 15:59 IST)
+        return "Morning Digest"
+    elif 12 <= hour_utc < 20:   # 14:00 to 21:59 UTC (16:00 to 23:59 IST)
+        return "Afternoon Digest"
+    else:                        # 22:00 to 05:59 UTC (00:00 to 07:59 IST)
+        return "Night Digest"
+
+
 def decode_email_subject(subject: str) -> str:
     """Decode email subject handling various encodings."""
     if subject is None:
@@ -345,9 +363,14 @@ Always respond with valid JSON."""
         return {"type": "newsletter", "articles": [], "source": email_data["sender"]}
 
 
-def group_articles_by_topic(all_articles: list[dict], system_notifications: list[dict]) -> str:
+def group_articles_by_topic(all_articles: list[dict], system_notifications: list[dict], time_label: str = None) -> str:
     """
     Stage 2: Use GPT to group all articles by topic and format the final summary.
+    
+    Args:
+        all_articles: List of extracted articles
+        system_notifications: List of system notifications
+        time_label: Time of day label (e.g., "Morning Digest", "Afternoon Digest", "Night Digest")
     """
     if not all_articles and not system_notifications:
         return None
@@ -359,8 +382,10 @@ def group_articles_by_topic(all_articles: list[dict], system_notifications: list
     notifications_text = json.dumps(system_notifications, indent=2, ensure_ascii=False)
     
     today = datetime.now(timezone.utc).strftime("%B %d, %Y")
+    if not time_label:
+        time_label = get_time_of_day_label()
     
-    prompt = f"""Create a daily newsletter digest from these articles and system notifications.
+    prompt = f"""Create a newsletter digest from these articles and system notifications.
 
 **ARTICLES:**
 {articles_text}
@@ -407,7 +432,7 @@ For filtered items, use a compact format:
 
 **FORMATTING REQUIREMENTS:**
 
-1. Start with a title: "# Daily Newsletter Digest" and the date: {today}
+1. Start with a title: "# {time_label}" and the date: {today}
 
 2. Add a brief intro line like "Here's your daily summary of [X] articles from [Y] sources."
 
@@ -463,14 +488,20 @@ You create emails that are:
         return None
 
 
-def create_no_articles_message() -> str:
-    """Create message for when no articles are found."""
+def create_no_articles_message(time_label: str = None) -> str:
+    """Create message for when no articles are found.
+    
+    Args:
+        time_label: Time of day label (e.g., "Morning Digest", "Afternoon Digest", "Night Digest")
+    """
     today = datetime.now(timezone.utc).strftime("%B %d, %Y")
-    return f"""# Daily Newsletter Digest
+    if not time_label:
+        time_label = get_time_of_day_label()
+    return f"""# {time_label}
 
 **Date:** {today}
 
-No new articles were found in your newsletters from the past 24 hours.
+No new articles were found in your newsletters from the past 9 hours.
 
 This email confirms that the Email Summary Agent ran successfully.
 
@@ -484,10 +515,11 @@ def send_summary_email(summary_content: str):
     print("Sending summary email...")
     
     today = datetime.now(timezone.utc).strftime("%B %d, %Y")
+    time_label = get_time_of_day_label()
     
     # Create message
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Daily Newsletter Digest - {today}"
+    msg["Subject"] = f"{time_label} - {today}"
     msg["From"] = GMAIL_ADDRESS
     msg["To"] = RECIPIENT_EMAIL
     
@@ -544,7 +576,7 @@ def markdown_to_html(markdown_text: str) -> str:
     lines = markdown_text.split('\n')
     
     # Extract title, date, and intro
-    title = "Daily Newsletter Digest"
+    title = get_time_of_day_label()
     date_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
     intro = ""
     
@@ -921,9 +953,9 @@ def main(email_limit: Optional[int] = None):
     print("\n[Step 0] Loading previous email articles for deduplication...")
     last_article_ids = load_last_email_articles()
 
-    # Step 1: Fetch emails from the last 24 hours
-    print("\n[Step 1] Fetching emails from the last 24 hours...")
-    emails = fetch_emails_from_last_n_hours(hours=24, limit=email_limit)
+    # Step 1: Fetch emails from the last 9 hours
+    print("\n[Step 1] Fetching emails from the last 9 hours...")
+    emails = fetch_emails_from_last_n_hours(hours=9, limit=email_limit)
     print(f"Total emails fetched: {len(emails)}")
 
     # Step 2: Extract articles from each email (Stage 1)
@@ -954,13 +986,14 @@ def main(email_limit: Optional[int] = None):
 
     # Step 3: Group articles and create summary (Stage 2)
     print("\n[Step 3] Creating summary...")
+    time_label = get_time_of_day_label()
     if all_articles or system_notifications:
-        summary = group_articles_by_topic(all_articles, system_notifications)
+        summary = group_articles_by_topic(all_articles, system_notifications, time_label)
     else:
-        summary = create_no_articles_message()
+        summary = create_no_articles_message(time_label)
 
     if not summary:
-        summary = create_no_articles_message()
+        summary = create_no_articles_message(time_label)
 
     # Step 4: Send the summary email
     print("\n[Step 4] Sending summary email...")

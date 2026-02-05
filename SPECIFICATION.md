@@ -11,9 +11,9 @@ An automated agent that runs on GitHub Actions, fetches newsletter emails from G
 | **Source Email** | `ramnewslettersblogsnews@gmail.com` |
 | **Recipient Email** | `ram.ben.ishay60@gmail.com` |
 | **Authentication** | Gmail IMAP with App Password |
-| **Schedule** | Daily at 4 PM Israel Time (14:00 UTC) |
+| **Schedule** | 3x daily: Morning (08:00), Afternoon (16:00), Night (00:00) Israel Time |
 | **LLM Model** | GPT 5.2 |
-| **Time Window** | Past 24 hours |
+| **Time Window** | Past 9 hours |
 
 ## Email Content Type
 
