@@ -19,6 +19,7 @@ import os
 import json
 import re
 import hashlib
+import urllib.parse
 from typing import Optional
 from pathlib import Path
 
@@ -43,6 +44,14 @@ RECIPIENT_EMAIL = os.environ.get("RECIPIENT_EMAIL")
 # Gist configuration for article deduplication
 GIST_ID = os.environ.get("SENT_ARTICLES_GIST_ID")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+
+# Deduplication configuration
+DEDUP_RETENTION_DAYS = 7
+TRACKING_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "ref", "source", "mc_eid", "mc_cid", "fbclid", "gclid", "msclkid",
+    "ck_subscriber_id", "sref", "smid", "smtyp", "_hsenc", "_hsmi",
+}
 
 # Gmail IMAP/SMTP settings
 IMAP_SERVER = "imap.gmail.com"
@@ -852,76 +861,230 @@ def markdown_to_html(markdown_text: str) -> str:
     return html
 
 
+def normalize_url(url: str) -> str:
+    """Strip tracking query parameters and fragments from a URL."""
+    if not url:
+        return ""
+    parsed = urllib.parse.urlparse(url)
+    original_qs = urllib.parse.parse_qs(parsed.query, keep_blank_values=False)
+    cleaned_qs = {
+        k: v for k, v in original_qs.items()
+        if k.lower() not in TRACKING_PARAMS
+    }
+    cleaned_query = urllib.parse.urlencode(cleaned_qs, doseq=True)
+    normalized = parsed._replace(query=cleaned_query, fragment="")
+    return urllib.parse.urlunparse(normalized)
+
+
+def normalize_title(title: str) -> str:
+    """Normalize an article title for deduplication.
+
+    Collapses whitespace, strips outer whitespace, removes trailing
+    source tags (e.g. ' | TechCrunch'), and strips trailing ellipsis.
+    """
+    if not title:
+        return ""
+    title = re.sub(r"\s+", " ", title).strip()
+    title = re.sub(r"\s*[|\u2014\u2013]\s*[^|\u2014\u2013]+$", "", title)
+    title = re.sub(r"\.{2,}$", "", title).rstrip()
+    return title
+
+
 def generate_article_id(article: dict) -> str:
-    """Generate a unique ID for an article based on title and link."""
-    content = f"{article.get('title', '')}{article.get('link', '')}".lower().strip()
+    """Generate a unique ID for an article based on normalized title and link."""
+    title = normalize_title(article.get("title", ""))
+    link = normalize_url(article.get("link", ""))
+    content = f"{title}{link}".lower().strip()
     return hashlib.md5(content.encode()).hexdigest()
 
 
-def load_last_email_articles() -> set:
-    """Load article IDs from the last sent email via GitHub Gist."""
+def _fetch_gist_data() -> Optional[dict]:
+    """Fetch and parse the article history JSON from the GitHub Gist.
+
+    Returns the parsed dict on success or None on failure.
+    """
     if not GIST_ID or not GITHUB_TOKEN:
-        print("Gist not configured, skipping deduplication")
-        return set()
+        return None
 
     try:
         headers = {"Authorization": f"token {GITHUB_TOKEN}"}
         response = requests.get(
             f"https://api.github.com/gists/{GIST_ID}",
-            headers=headers
+            headers=headers,
         )
         if response.status_code == 200:
             content = response.json()["files"]["last_email_articles.json"]["content"]
-            data = json.loads(content)
-            print(f"Loaded {len(data.get('article_ids', []))} article IDs from last email")
-            return set(data.get("article_ids", []))
+            return json.loads(content)
         else:
             print(f"Failed to load from Gist: {response.status_code}")
     except Exception as e:
-        print(f"Error loading last email articles: {e}")
+        print(f"Error loading Gist data: {e}")
 
-    return set()
+    return None
 
 
-def save_last_email_articles(articles: list[dict]):
-    """Save current email's article IDs to GitHub Gist (overwrites previous)."""
+def _migrate_old_format(data: dict) -> dict:
+    """Convert the old flat schema to the new rolling schema.
+
+    Old format:  {"article_ids": [...]}
+    New format:  {"runs": [{"timestamp": "...", "article_ids": [...]}]}
+    """
+    if "runs" in data:
+        return data
+
+    old_ids = data.get("article_ids", [])
+    print(f"Migrating old Gist format ({len(old_ids)} article IDs) to rolling history")
+    return {
+        "runs": [
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "article_ids": old_ids,
+            }
+        ]
+    }
+
+
+def load_last_email_articles() -> tuple[set, Optional[dict]]:
+    """Load all article IDs from the rolling history stored in the GitHub Gist.
+
+    Returns a tuple of:
+        - The union of article IDs across all recent runs (within the
+          retention window).
+        - The raw (migrated) Gist data dict, so callers can pass it to
+          ``save_last_email_articles`` and avoid a redundant API fetch.
+          ``None`` when the Gist could not be loaded.
+    """
+    if not GIST_ID or not GITHUB_TOKEN:
+        print("Gist not configured, skipping deduplication")
+        return set(), None
+
+    data = _fetch_gist_data()
+    if data is None:
+        return set(), None
+
+    data = _migrate_old_format(data)
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=DEDUP_RETENTION_DAYS)
+    all_ids: set[str] = set()
+    runs_loaded = 0
+
+    for run in data.get("runs", []):
+        try:
+            raw_ts = run["timestamp"].replace("Z", "+00:00")
+            ts = datetime.fromisoformat(raw_ts)
+        except (KeyError, ValueError):
+            continue
+        if ts >= cutoff:
+            all_ids.update(run.get("article_ids", []))
+            runs_loaded += 1
+
+    print(
+        f"Loaded dedup history: {runs_loaded} recent runs, "
+        f"{len(all_ids)} unique article IDs (retention: {DEDUP_RETENTION_DAYS} days)"
+    )
+    return all_ids, data
+
+
+def save_last_email_articles(
+    articles: list[dict],
+    existing_gist_data: Optional[dict] = None,
+):
+    """Append the current run's article IDs to the rolling history in the Gist.
+
+    If ``existing_gist_data`` is provided (e.g. from a prior
+    ``load_last_email_articles`` call), it is reused to avoid a redundant
+    GET request. Otherwise the Gist is fetched fresh.
+
+    Appends a new timestamped entry, prunes entries older than the retention
+    window, then writes back.
+    """
     if not GIST_ID or not GITHUB_TOKEN:
         print("Gist not configured, skipping save")
         return
 
     try:
         article_ids = [generate_article_id(a) for a in articles]
+        now = datetime.now(timezone.utc)
+
+        # Reuse pre-fetched data when available; fetch otherwise
+        if existing_gist_data is not None:
+            existing = existing_gist_data
+        else:
+            existing = _fetch_gist_data()
+            if existing is None:
+                existing = {"runs": []}
+            existing = _migrate_old_format(existing)
+
+        # Append current run
+        existing.setdefault("runs", []).append({
+            "timestamp": now.isoformat(),
+            "article_ids": article_ids,
+        })
+
+        # Prune runs older than the retention window
+        cutoff = now - timedelta(days=DEDUP_RETENTION_DAYS)
+        original_run_count = len(existing["runs"])
+        existing["runs"] = [
+            r for r in existing["runs"]
+            if _parse_run_timestamp(r) >= cutoff
+        ]
+        pruned = original_run_count - len(existing["runs"])
+
         headers = {"Authorization": f"token {GITHUB_TOKEN}"}
         payload = {
             "files": {
                 "last_email_articles.json": {
-                    "content": json.dumps({"article_ids": article_ids}, indent=2)
+                    "content": json.dumps(existing, indent=2)
                 }
             }
         }
         response = requests.patch(
             f"https://api.github.com/gists/{GIST_ID}",
             headers=headers,
-            json=payload
+            json=payload,
         )
         if response.status_code == 200:
-            print(f"Saved {len(article_ids)} article IDs to Gist")
+            print(
+                f"Saved {len(article_ids)} article IDs to Gist "
+                f"(total runs kept: {len(existing['runs'])}, pruned: {pruned})"
+            )
         else:
             print(f"Failed to save to Gist: {response.status_code}")
     except Exception as e:
         print(f"Error saving last email articles: {e}")
 
 
+def _parse_run_timestamp(run: dict) -> datetime:
+    """Parse a run's timestamp, returning epoch as fallback for malformed entries."""
+    try:
+        raw_ts = run["timestamp"].replace("Z", "+00:00")
+        return datetime.fromisoformat(raw_ts)
+    except (KeyError, ValueError, AttributeError):
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+
 def filter_already_sent(articles: list[dict], last_article_ids: set) -> list[dict]:
-    """Remove articles that were in the last email."""
+    """Remove articles whose IDs appear in the rolling dedup history."""
     new_articles = []
     duplicates = 0
+    skipped_titles: list[str] = []
     for article in articles:
         if generate_article_id(article) not in last_article_ids:
             new_articles.append(article)
         else:
             duplicates += 1
-            print(f"  Skipping duplicate: {article.get('title', 'Unknown')[:50]}...")
+            skipped_titles.append(article.get("title", "Unknown"))
+
+    if duplicates:
+        sample = skipped_titles[:5]
+        print(f"  Filtered {duplicates} duplicate article(s). Sample skipped titles:")
+        for t in sample:
+            print(f"    - {t[:80]}")
+        if duplicates > 5:
+            print(f"    ... and {duplicates - 5} more")
+    else:
+        print("  No duplicates found in history.")
+
     return new_articles
 
 
@@ -949,9 +1112,9 @@ def main(email_limit: Optional[int] = None):
             missing.append("RECIPIENT_EMAIL")
         raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
-    # Load last email's article IDs for deduplication
-    print("\n[Step 0] Loading previous email articles for deduplication...")
-    last_article_ids = load_last_email_articles()
+    # Load article ID history for deduplication (rolling window)
+    print("\n[Step 0] Loading deduplication history...")
+    last_article_ids, gist_data = load_last_email_articles()
 
     # Step 1: Fetch emails from the last 9 hours
     print("\n[Step 1] Fetching emails from the last 9 hours...")
@@ -1001,7 +1164,7 @@ def main(email_limit: Optional[int] = None):
 
     # Step 5: Save current articles to Gist (only after successful send)
     print("\n[Step 5] Saving article IDs for next run...")
-    save_last_email_articles(all_articles)
+    save_last_email_articles(all_articles, existing_gist_data=gist_data)
 
     print("\n" + "=" * 60)
     print("Email Summary Agent Completed Successfully")
